@@ -3,15 +3,24 @@ var height = window.innerHeight - 110;
 
 console.log(width, height)
 
-let input, button, labelInput;
+let input, submit_button, run_button, labelInput;
 let x_axis = [];
 let y_axis = [];
 
 let objects_to_draw = [];
 let points = [];
-let listOrderX = []
+let lines = [];
+
+var COLOR_RED;
+var COLOR_BLUE;
+var COLOR_GREEN;
 
 function setup() {
+
+    COLOR_RED = color(255, 0, 0);
+    COLOR_BLUE = color(0, 0, 255);
+    COLOR_GREEN = color(0, 255, 0);
+    
     var canvas = createCanvas(window.innerWidth - 20, window.innerHeight - 100);
     canvas.parent("sketch");
     noStroke();
@@ -23,9 +32,13 @@ function setup() {
     input = createInput();
     input.position(labelInput.x + input.width + 20, 25);
 
-    button = createButton('submit');
-    button.position(input.x + input.width + 10, 25);
-    button.mousePressed(submit_listenner);
+    submit_button = createButton('submit');
+    submit_button.position(input.x + input.width + 10, 25);
+    submit_button.mousePressed(submit_listenner);
+
+    run_button = createButton('run');
+    run_button.position(submit_button.x + submit_button.width + 10, 25);
+    run_button.mousePressed(run_algorithm);
 
     //Slide for adjust the velocity
 
@@ -60,11 +73,29 @@ function Point(x, y, width) {
     }
 }
 
+function Line(x1, y1, x2, y2, color) {
+
+    this.x1 = x1;
+    this.y1 = y1;
+
+    this.x2 = x2;
+    this.y2 = y2;
+
+    this.color = color;
+
+    this.render = function () {
+        stroke(this.color);
+        line(this.x1, this.y1, this.x2, this.y2);
+    }
+
+}
+
 function submit_listenner() {
 
     clear();
 
     points = [];
+    lines = [];
 
     x_axis = [];
     y_axis = [];
@@ -88,48 +119,150 @@ function submit_listenner() {
         points.push(point);
     }
 
-    listOrderX = orderByX(points);
-    run_algorithm(listOrderX);
+    points.sort((a, b) => {
+        return (a.x < b.x) ? -1 : 1;
+    });
 }
 
-function orderByX(points){
-    return points.sort((a,b) => (a.x > b.x) ? 1 : ((b.x > a.x) ? -1 : 0));
+function run_algorithm() {
+    let closest = findClosest(points);
+}
+
+function distance(pointA, pointB){
+
+    if (pointA == null || pointB == null) return Infinity;
+
+    if (typeof(pointA) == typeof([])){
+
+        return distance(pointA[0], pointA[1]);
+    }
+
+    let result = Math.pow(pointA.x - pointB.x, 2) + Math.pow(pointA.y - pointB.y, 2);
+    result = Math.sqrt(result);
+
+    return result;
 }
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+  
 
-async function run_algorithm(points) {
+async function findClosest(currentPoints){
 
-    if (points.length <= 2){
-        return
-    } 
+    await sleep(parseInt(labelVelocity.value()));
+    
+    if (typeof(currentPoints) != typeof([]) || currentPoints.length <= 1) {
+        return [currentPoints[0], null];
+    }
 
-    let middle = parseInt(points.length / 2);
+    // TODO: use mean of means
+    let mid = Math.floor(currentPoints.length / 2);
+    let midPoint = currentPoints[mid];
 
-    let left = points.slice(0, middle);
-    let right = points.slice(middle, points.length);
+    console.log(currentPoints);
+    console.log(mid);
 
-    stroke(255);
-    line(right[0].x - 7, 0, right[0].x - 7, height);
+    let l = new Line(midPoint.x + 1, 0, midPoint.x, height, COLOR_RED);
+    lines.push(l);
+    
+    let leftPoints = await findClosest(currentPoints.slice(0, mid));
 
-    await sleep(VelocitySlider.value());
+    if (leftPoints[1] != null) {
 
-    run_algorithm(left);
-    run_algorithm(right);
+        let a = leftPoints[0];
+        let b = leftPoints[1];
+
+        let leftLine = new Line(a.x, a.y, b.x, b.y, COLOR_BLUE);
+        lines.push(leftLine);
+    }
+
+    let rigthPoints = await findClosest(currentPoints.slice(mid));
+
+    if (rigthPoints[1] != null) {
+
+        let a = rigthPoints[0];
+        let b = rigthPoints[1];
+
+        let rigthLine = new Line(a.x, a.y, b.x, b.y, COLOR_BLUE);
+        lines.push(rigthLine);
+    } else {
+    
+        let a = leftPoints[0];
+        let b = rigthPoints[0];
+
+        let centerline = new Line(a.x, a.y, b.x, b.y, COLOR_BLUE);
+        lines.push(centerline);
+
+        return [a, b];
+    }
+
+    let distanceLeft = distance(leftPoints);
+    let distanceRight = distance(rigthPoints);
+
+    let minPair = (distanceLeft < distanceRight) ? leftPoints : rigthPoints;
+    let min = Math.min(distanceLeft, distanceRight);
+
+    let stripMinX = midPoint.x - min;
+    let stripMaxX = midPoint.x + min;
+
+    let strip = currentPoints.filter((element) => {
+        return stripMinX < element.x && element.x < stripMaxX;
+    });
+
+    strip.sort((a, b) => {
+        return (a.y < b.y) ? -1 : 1;
+    });
+
+    let y_bound = 6 - strip.length;
+
+    if (y_bound <= 0) y_bound = 6;
+
+    for (let i = 0; i < strip.length - 1; i++) {
+
+        let current = strip[i];
+
+        if (Math.abs(current.x) > Math.abs(midPoint.x + min)) {
+            // filter out points that are out of the strip defined by:
+            // [mean - min; mean + min]
+
+            continue;
+        }
+
+        for (let j = i + 1; j < i + y_bound && j < strip.length; j++) {
+
+            let compare = strip[j];
+
+            let dist = distance(current, compare);
+
+            if (dist < min) {
+                min = dist;
+                minPair[0] = current;
+                minPair[1] = compare;
+            }
+
+        }
+
+    }
+
+    let a = minPair[0];
+    let b = minPair[1];
+    let minLine = new Line(a.x, a.y, b.x, b.y, COLOR_GREEN);
+    lines.push(minLine);
+
+    return minPair;
 }
+
 
 function draw() {
     // loops forever  
 
-    objects_to_draw = [].concat(points);
+    objects_to_draw = [].concat(points).concat(lines);
 
-    //clear();
+    clear();
     
     for (const obj of objects_to_draw) {
         
         obj.render();
     }
-
 }
