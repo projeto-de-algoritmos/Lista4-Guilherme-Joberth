@@ -7,6 +7,9 @@ let input, button, labelInput;
 let x_axis = [];
 let y_axis = [];
 
+let objects_to_draw = [];
+let points = [];
+
 function setup() {
     var canvas = createCanvas(window.innerWidth - 20, window.innerHeight - 100);
     canvas.parent("sketch");
@@ -21,7 +24,7 @@ function setup() {
 
     button = createButton('submit');
     button.position(input.x + input.width + 10, 25);
-    button.mousePressed(listenner);
+    button.mousePressed(submit_listenner);
 
     //Slide for adjust the velocity
 
@@ -39,10 +42,26 @@ function setup() {
 
     textAlign(CENTER);
     textSize(50);
+
+    frameRate(60);
 }
 
-function listenner() {
-    clear();
+function Point(x, y, width) {
+
+    this.x = x;
+    this.y = y;
+    this.width = width;
+
+    this.render = function () {
+        fill(0);
+        ellipse(x, y, width, 10);
+    }
+}
+
+function submit_listenner() {
+
+    points = [];
+
     x_axis = [];
     y_axis = [];
     const number_points = parseInt(input.value());
@@ -60,10 +79,25 @@ function listenner() {
     console.log(y_axis);
 
     for (let i = 0; i < number_points; i++) {
-        fill(0);
-        ellipse(x_axis[i], y_axis[i], 10, 10);
+        
+        let point = new Point(x_axis[i], y_axis[i], 10);
+        points.push(point);
     }
 }
 
+function run_algorithm() {
+
+}
+
 function draw() {
+    // loops forever  
+
+    objects_to_draw = [].concat(points);
+
+    clear();
+    
+    for (const obj of objects_to_draw) {
+        
+        obj.render();
+    }
 }
