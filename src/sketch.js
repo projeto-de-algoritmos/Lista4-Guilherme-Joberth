@@ -9,6 +9,7 @@ let y_axis = [];
 
 let objects_to_draw = [];
 let points = [];
+let listOrderX = []
 
 function setup() {
     var canvas = createCanvas(window.innerWidth - 20, window.innerHeight - 100);
@@ -28,16 +29,16 @@ function setup() {
 
     //Slide for adjust the velocity
 
-    VelocitySlider = createSlider(10, 100, 10);
+    VelocitySlider = createSlider(300, 800, 300);
     VelocitySlider.position( 900, input.y);
 
     labelVelocity = createElement('h5', 'Velocidade: ');
     labelVelocity.position(750 , 7);
 
-    labelVelocity = createElement('h5', '10 ms');
+    labelVelocity = createElement('h5', '300 ms');
     labelVelocity.position(VelocitySlider.x - 45 , 7);
 
-    labelVelocity = createElement('h5', '100 ms');
+    labelVelocity = createElement('h5', '800 ms');
     labelVelocity.position(VelocitySlider.x + VelocitySlider.width + 10 , 7);
 
     textAlign(CENTER);
@@ -53,12 +54,15 @@ function Point(x, y, width) {
     this.width = width;
 
     this.render = function () {
-        fill(0);
+        fill(255);
+        stroke(255);
         ellipse(x, y, width, 10);
     }
 }
 
 function submit_listenner() {
+
+    clear();
 
     points = [];
 
@@ -83,10 +87,37 @@ function submit_listenner() {
         let point = new Point(x_axis[i], y_axis[i], 10);
         points.push(point);
     }
+
+    listOrderX = orderByX(points);
+    run_algorithm(listOrderX);
 }
 
-function run_algorithm() {
+function orderByX(points){
+    return points.sort((a,b) => (a.x > b.x) ? 1 : ((b.x > a.x) ? -1 : 0));
+}
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function run_algorithm(points) {
+
+    if (points.length <= 2){
+        return
+    } 
+
+    let middle = parseInt(points.length / 2);
+
+    let left = points.slice(0, middle);
+    let right = points.slice(middle, points.length);
+
+    stroke(255);
+    line(right[0].x - 7, 0, right[0].x - 7, height);
+
+    await sleep(VelocitySlider.value());
+
+    run_algorithm(left);
+    run_algorithm(right);
 }
 
 function draw() {
@@ -94,10 +125,11 @@ function draw() {
 
     objects_to_draw = [].concat(points);
 
-    clear();
+    //clear();
     
     for (const obj of objects_to_draw) {
         
         obj.render();
     }
+
 }
