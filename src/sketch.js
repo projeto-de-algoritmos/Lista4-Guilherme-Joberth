@@ -42,16 +42,16 @@ function setup() {
 
     //Slide for adjust the velocity
 
-    VelocitySlider = createSlider(300, 800, 300);
+    VelocitySlider = createSlider(10, 1000, 100, 10);
     VelocitySlider.position( 900, input.y);
 
     labelVelocity = createElement('h5', 'Velocidade: ');
     labelVelocity.position(750 , 7);
 
-    labelVelocity = createElement('h5', '300 ms');
+    labelVelocity = createElement('h5', '10 ms');
     labelVelocity.position(VelocitySlider.x - 45 , 7);
 
-    labelVelocity = createElement('h5', '800 ms');
+    labelVelocity = createElement('h5', '1000 ms');
     labelVelocity.position(VelocitySlider.x + VelocitySlider.width + 10 , 7);
 
     textAlign(CENTER);
@@ -68,7 +68,7 @@ function Point(x, y, width) {
 
     this.render = function () {
         fill(255);
-        stroke(255);
+        stroke(0);
         ellipse(x, y, width, 10);
     }
 }
@@ -100,7 +100,6 @@ function submit_listenner() {
     x_axis = [];
     y_axis = [];
     const number_points = parseInt(input.value());
-    input.value("");
 
     while (x_axis.length < number_points) {
         let current_x = Math.floor(Math.random() * (width - 15)) + 10;
@@ -150,7 +149,7 @@ function sleep(ms) {
 
 async function findClosest(currentPoints){
 
-    await sleep(parseInt(labelVelocity.value()));
+    await sleep(parseInt(VelocitySlider.value()));
     
     if (typeof(currentPoints) != typeof([]) || currentPoints.length <= 1) {
         return [currentPoints[0], null];
@@ -163,7 +162,7 @@ async function findClosest(currentPoints){
     console.log(currentPoints);
     console.log(mid);
 
-    let l = new Line(midPoint.x + 1, 0, midPoint.x, height, COLOR_RED);
+    let l = new Line(midPoint.x - 11, 0, midPoint.x - 11, height, COLOR_RED);
     lines.push(l);
     
     let leftPoints = await findClosest(currentPoints.slice(0, mid));
@@ -252,7 +251,6 @@ async function findClosest(currentPoints){
 
     return minPair;
 }
-
 
 function draw() {
     // loops forever  
