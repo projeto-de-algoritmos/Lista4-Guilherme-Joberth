@@ -335,8 +335,6 @@ async function findClosest(currentPoints){
 
     let a = minPair[0];
     let b = minPair[1];
-    let minLine = new Line(a.x, a.y, b.x, b.y, COLOR_BLUE);
-    lines.push(minLine);
 
     stripLineMin.color = COLOR_TRANSPARENT;
     stripLineMax.color = COLOR_TRANSPARENT;
@@ -353,7 +351,7 @@ async function findClosest(currentPoints){
         );
     }
 
-    return minPair.concat([minLine]);
+    return minPair;
 }
 
 function draw() {
