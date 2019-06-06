@@ -14,6 +14,7 @@ let lines = [];
 var COLOR_RED;
 var COLOR_BLUE;
 var COLOR_GREEN;
+var COLOR_YELLOW;
 var COLOR_WHITE;
 var COLOR_TRANSPARENT;
 
@@ -22,6 +23,7 @@ function setup() {
     COLOR_RED = color(255, 0, 0);
     COLOR_BLUE = color(0, 0, 255);
     COLOR_GREEN = color(0, 255, 0);
+    COLOR_YELLOW = color(255, 255, 0);
     COLOR_WHITE = color(255, 255, 255);
     COLOR_TRANSPARENT = color(0, 0, 0, 0);
 
@@ -286,6 +288,12 @@ async function findClosest(currentPoints){
         return (a.y < b.y) ? -1 : 1;
     });
 
+    let original_colors = [];
+    for (const p of strip) {
+        original_colors.push(p.fillColor);
+        p.fillColor = COLOR_YELLOW;
+    }
+
     let y_bound = 6 - strip.length;
 
     if (y_bound <= 0) y_bound = 6;
@@ -319,6 +327,10 @@ async function findClosest(currentPoints){
                 compareLine.color = COLOR_TRANSPARENT;
             }
         }
+    }
+
+    for(let i = 0; i < original_colors.length; i++){
+        strip[i].fillColor = original_colors[i];
     }
 
     let a = minPair[0];
