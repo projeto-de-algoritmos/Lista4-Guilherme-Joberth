@@ -14,16 +14,19 @@ let lines = [];
 var COLOR_RED;
 var COLOR_BLUE;
 var COLOR_GREEN;
+var COLOR_WHITE;
+var COLOR_TRANSPARENT;
 
 function setup() {
 
     COLOR_RED = color(255, 0, 0);
     COLOR_BLUE = color(0, 0, 255);
     COLOR_GREEN = color(0, 255, 0);
-    
+    COLOR_WHITE = color(255, 255, 255);
+    COLOR_TRANSPARENT = color(0, 0, 0, 0);
+
     var canvas = createCanvas(window.innerWidth - 20, window.innerHeight - 100);
     canvas.parent("sketch");
-    noStroke();
 
     //Input number of points
     labelInput = createElement('h5', 'Digite a quantidade de pontos: ');
@@ -42,13 +45,13 @@ function setup() {
 
     //Slide for adjust the velocity
 
-    VelocitySlider = createSlider(10, 1000, 100, 10);
+    VelocitySlider = createSlider(0, 1000, 100, 10);
     VelocitySlider.position( 900, input.y);
 
     labelVelocity = createElement('h5', 'Velocidade: ');
     labelVelocity.position(750 , 7);
 
-    labelVelocity = createElement('h5', '10 ms');
+    labelVelocity = createElement('h5', '0 ms');
     labelVelocity.position(VelocitySlider.x - 45 , 7);
 
     labelVelocity = createElement('h5', '1000 ms');
@@ -57,7 +60,7 @@ function setup() {
     textAlign(CENTER);
     textSize(50);
 
-    frameRate(60);
+    frameRate(120);
 }
 
 function Point(x, y, width) {
@@ -66,8 +69,10 @@ function Point(x, y, width) {
     this.y = y;
     this.width = width;
 
+    this.fillColor = COLOR_WHITE;
+
     this.render = function () {
-        fill(255);
+        fill(this.fillColor);
         stroke(0);
         ellipse(x, y, width, 10);
     }
@@ -124,17 +129,26 @@ function submit_listenner() {
 }
 
 function run_algorithm() {
-    let closest = findClosest(points);
+
+    findClosest(points).then((closest) =>{
+
+        console.log(closest);
+
+        closest[0].fillColor = COLOR_GREEN;
+        closest[1].fillColor = COLOR_GREEN;
+        closest[2].color = COLOR_GREEN;
+        lines = [closest[2]]
+    });
 }
 
 function distance(pointA, pointB){
 
-    if (pointA == null || pointB == null) return Infinity;
-
-    if (typeof(pointA) == typeof([])){
+    if (Array.isArray(pointA)){
 
         return distance(pointA[0], pointA[1]);
     }
+
+    if (pointA == null || pointB == null) return Infinity;
 
     let result = Math.pow(pointA.x - pointB.x, 2) + Math.pow(pointA.y - pointB.y, 2);
     result = Math.sqrt(result);
@@ -142,71 +156,130 @@ function distance(pointA, pointB){
     return result;
 }
 
+function createLineBetweenPoints(pointA, pointB, color){
+
+    let line = new Line(pointA.x, pointA.y, pointB.x, pointB.y, color);
+    lines.push(line);
+
+    return line;
+}
+
 function sleep(ms) {
+
+    if (ms === 0){
+        return;
+    }
+
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-  
 
 async function findClosest(currentPoints){
 
     await sleep(parseInt(VelocitySlider.value()));
+
+    let colorStep = 40;
+
+    for (const p of currentPoints) {
+        
+        p.fillColor = color(
+            red(p.fillColor) - colorStep,
+            green(p.fillColor) - colorStep,
+            blue(p.fillColor) - colorStep
+        );
+    }
     
+    // if theres just one point, it is already the 'smallest pair' in
+    // the sector
     if (typeof(currentPoints) != typeof([]) || currentPoints.length <= 1) {
-        return [currentPoints[0], null];
+        for (const p of currentPoints) {
+        
+        
+            p.fillColor = color(
+                red(p.fillColor) + colorStep,
+                green(p.fillColor) + colorStep,
+                blue(p.fillColor) + colorStep
+            );
+        }
+    
+        return [currentPoints[0], null, null];
     }
 
     // TODO: use mean of means
+    // gets mid point of the sorted array of points to consider
     let mid = Math.floor(currentPoints.length / 2);
     let midPoint = currentPoints[mid];
 
-    console.log(currentPoints);
-    console.log(mid);
+    // draws a red division line on the division
+    let divisionLine = new Line(midPoint.x - 11, 0, midPoint.x - 11, height, COLOR_RED);
+    lines.push(divisionLine);
 
-    let l = new Line(midPoint.x - 11, 0, midPoint.x - 11, height, COLOR_RED);
-    lines.push(l);
-    
+    // gets, recursively, the pair of points left of the line and
+    // rigth of the line
     let leftPoints = await findClosest(currentPoints.slice(0, mid));
+    let rigthPoints = await findClosest(currentPoints.slice(mid, currentPoints.length));
+   
+    // it the two sectors had only one point, we can unite them
+    if (leftPoints[1] === null && rigthPoints[1] === null) {
 
-    if (leftPoints[1] != null) {
+        let centerSmallestLine = createLineBetweenPoints(
+            leftPoints[0],
+            rigthPoints[0],
+            COLOR_BLUE
+        );
 
-        let a = leftPoints[0];
-        let b = leftPoints[1];
+        // removes division line
+        divisionLine.color = COLOR_TRANSPARENT;
 
-        let leftLine = new Line(a.x, a.y, b.x, b.y, COLOR_BLUE);
-        lines.push(leftLine);
-    }
+        for (const p of currentPoints) {
+        
+        
+            p.fillColor = color(
+                red(p.fillColor) + colorStep,
+                green(p.fillColor) + colorStep,
+                blue(p.fillColor) + colorStep
+            );
+        }    
 
-    let rigthPoints = await findClosest(currentPoints.slice(mid));
-
-    if (rigthPoints[1] != null) {
-
-        let a = rigthPoints[0];
-        let b = rigthPoints[1];
-
-        let rigthLine = new Line(a.x, a.y, b.x, b.y, COLOR_BLUE);
-        lines.push(rigthLine);
-    } else {
+        return [leftPoints[0], rigthPoints[0], centerSmallestLine]
     
-        let a = leftPoints[0];
-        let b = rigthPoints[0];
-
-        let centerline = new Line(a.x, a.y, b.x, b.y, COLOR_BLUE);
-        lines.push(centerline);
-
-        return [a, b];
     }
 
+    // Unite the left side and the rigth side
     let distanceLeft = distance(leftPoints);
     let distanceRight = distance(rigthPoints);
 
-    let minPair = (distanceLeft < distanceRight) ? leftPoints : rigthPoints;
-    let min = Math.min(distanceLeft, distanceRight);
+    let minPair;
+    let min;
+
+    // finds minimal pair between left and rigth
+    // and clears line from not selected pair
+    if (distanceLeft < distanceRight){
+
+        minPair = leftPoints;
+        min = distanceLeft;
+        if(rigthPoints[2] !== null) rigthPoints[2].color = COLOR_TRANSPARENT;
+
+    }else{
+
+        minPair = rigthPoints;
+        min = distanceRight;
+        if (leftPoints[2] !== null) leftPoints[2].color = COLOR_TRANSPARENT;
+    }
 
     let stripMinX = midPoint.x - min;
     let stripMaxX = midPoint.x + min;
 
+    divisionLine.color = COLOR_BLUE;
+
+    let stripLineMin = new Line(stripMinX - 11, 0, stripMinX - 11, height, COLOR_GREEN);
+    lines.push(stripLineMin);
+    let stripLineMax = new Line(stripMaxX, 0, stripMaxX, height, COLOR_GREEN);
+    lines.push(stripLineMax);
+
+    await sleep(parseInt(VelocitySlider.value()))
+
     let strip = currentPoints.filter((element) => {
-        return stripMinX < element.x && element.x < stripMaxX;
+        return stripMinX <= element.x && element.x <= stripMaxX;
     });
 
     strip.sort((a, b) => {
@@ -221,44 +294,63 @@ async function findClosest(currentPoints){
 
         let current = strip[i];
 
-        if (Math.abs(current.x) > Math.abs(midPoint.x + min)) {
-            // filter out points that are out of the strip defined by:
-            // [mean - min; mean + min]
-
-            continue;
-        }
-
         for (let j = i + 1; j < i + y_bound && j < strip.length; j++) {
 
             let compare = strip[j];
 
+            let compareLine = createLineBetweenPoints(current, compare, COLOR_RED);
+
+            await sleep(parseInt(VelocitySlider.value()));
+            
             let dist = distance(current, compare);
 
             if (dist < min) {
                 min = dist;
+
                 minPair[0] = current;
                 minPair[1] = compare;
+                
+                minPair[2].color = COLOR_TRANSPARENT;
+                compareLine.color = COLOR_BLUE;
+                minPair[2] = compareLine;
+
+            }else{
+
+                compareLine.color = COLOR_TRANSPARENT;
             }
-
         }
-
     }
 
     let a = minPair[0];
     let b = minPair[1];
-    let minLine = new Line(a.x, a.y, b.x, b.y, COLOR_GREEN);
+    let minLine = new Line(a.x, a.y, b.x, b.y, COLOR_BLUE);
     lines.push(minLine);
 
-    return minPair;
+    stripLineMin.color = COLOR_TRANSPARENT;
+    stripLineMax.color = COLOR_TRANSPARENT;
+    divisionLine.color = COLOR_TRANSPARENT;
+
+
+    for (const p of currentPoints) {
+        
+        
+        p.fillColor = color(
+            red(p.fillColor) + colorStep,
+            green(p.fillColor) + colorStep,
+            blue(p.fillColor) + colorStep
+        );
+    }
+
+    return minPair.concat([minLine]);
 }
 
 function draw() {
     // loops forever  
+    clear();
+    background(COLOR_WHITE);
 
     objects_to_draw = [].concat(points).concat(lines);
 
-    clear();
-    
     for (const obj of objects_to_draw) {
         
         obj.render();
