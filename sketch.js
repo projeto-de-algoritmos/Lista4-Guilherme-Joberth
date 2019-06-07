@@ -18,6 +18,9 @@ var COLOR_YELLOW;
 var COLOR_WHITE;
 var COLOR_TRANSPARENT;
 
+var running = false;
+var canvas;
+
 function setup() {
 
     COLOR_RED = color(255, 0, 0);
@@ -27,7 +30,7 @@ function setup() {
     COLOR_WHITE = color(255, 255, 255);
     COLOR_TRANSPARENT = color(0, 0, 0, 0);
 
-    var canvas = createCanvas(window.innerWidth - 20, window.innerHeight - 100);
+    canvas = createCanvas(window.innerWidth - 20, window.innerHeight - 100);
     canvas.parent("sketch");
 
     //Input number of points
@@ -97,7 +100,23 @@ function Line(x1, y1, x2, y2, color) {
 
 }
 
+function mouseReleased(){
+    
+    if(running) return;
+
+    if (0 <= mouseX && mouseX <= canvas.width && 0 <= mouseY && mouseY <= canvas.height){
+        let point = new Point(mouseX, mouseY, 10);
+        points.push(point);
+    }
+
+}
+
 function submit_listenner() {
+
+    if (running){ 
+        console.log("Already running");
+        return;
+    }
 
     clear();
 
@@ -124,13 +143,20 @@ function submit_listenner() {
         let point = new Point(x_axis[i], y_axis[i], 10);
         points.push(point);
     }
+}
+
+function run_algorithm() {
+
+    if (running){ 
+        console.log("Already running");
+        return;
+    }
+
+    running = true;
 
     points.sort((a, b) => {
         return (a.x < b.x) ? -1 : 1;
     });
-}
-
-function run_algorithm() {
 
     findClosest(points).then((closest) =>{
 
@@ -139,7 +165,10 @@ function run_algorithm() {
         closest[0].fillColor = COLOR_GREEN;
         closest[1].fillColor = COLOR_GREEN;
         closest[2].color = COLOR_GREEN;
-        lines = [closest[2]]
+        
+        lines = [closest[2]];
+        
+        running = false;
     });
 }
 
